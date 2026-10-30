@@ -682,7 +682,11 @@ void ad_run(int maxTurns)
 	{
 		if(my_adventures() <= reserve)
 		{
-			ad_info("Out of adventures (reserve " + reserve + ").");
+			cli_execute("autosea diet");	//eat and drink rather than stop (autosea fills the organs for every auto script)
+		}
+		if(my_adventures() <= reserve)
+		{
+			ad_info("Out of adventures (reserve " + reserve + "), and nothing more worth eating or drinking.");
 			break;
 		}
 		int before = my_turncount();
