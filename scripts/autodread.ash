@@ -277,6 +277,11 @@ record ad_plan
 	string what;
 };
 
+int ad_owned(item it)
+{
+	return item_amount(it) + closet_amount(it) + storage_amount(it) + display_amount(it) + equipped_amount(it);
+}
+
 ad_plan ad_planFor(ad_place p)
 {
 	if(ad_pencils() > 0 && !ad_recorded(p))
@@ -313,7 +318,8 @@ ad_plan ad_planFor(ad_place p)
 				return new ad_plan(1, 742, 2, "Freddies from the graves");
 			break;
 		case 745:
-			if(!ad_section["Castle"].contains_text("got a wax banana"))
+			//one banana makes the one lock impression you need; the replica key also needs a Moxie class and music box parts
+			if(!ad_section["Castle"].contains_text("got a wax banana") && ad_owned($item[wax banana]) + ad_owned($item[complicated lock impression]) + ad_owned($item[replica key]) == 0)
 				return new ad_plan(3, 748, 3, "the wax banana");
 			if(!ad_section["Castle"].contains_text("roast beast"))
 				return new ad_plan(3, 748, 1, "the roast");
