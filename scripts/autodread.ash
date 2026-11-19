@@ -454,13 +454,7 @@ boolean ad_visit(ad_place p, ad_plan plan)
 	int turnsBefore = my_turncount();
 	string page = visit_url("clan_dreadsylvania.php?action=forceloc&loc=" + p.shortcut);
 	string shortcutPage = page;		// KoL's reply to the shortcut itself, for the report if it doesn't take
-	// The shortcut leads to the place's choice without a turn spent; the turn goes with the option taken. KoLmafia
-	// doesn't always see that choice (run 108: logged with no encounter), so load it from choice.php if need be.
-	if(!handling_choice() && !page.contains_text("choice.php"))
-	{
-		page = visit_url("choice.php");
-	}
-	if(handling_choice() || page.contains_text("whichchoice"))
+	if(page.contains_text("choice.php") || handling_choice())
 	{
 		run_choice(-1);
 	}
@@ -468,7 +462,8 @@ boolean ad_visit(ad_place p, ad_plan plan)
 	{
 		ad_warn("The shortcut to " + p.name + " didn't take a turn; stopping so it doesn't repeat.");
 		// KoLmafia prints no reason when it doesn't recognise the reply (run 108's ghost pencil), so show what KoL said
-		string said = create_matcher("\\s+", create_matcher("<[^>]*>", shortcutPage).replace_all(" ")).replace_all(" ");
+		string said = create_matcher("(?is)<(script|style)[^>]*>.*?</\\1>", shortcutPage).replace_all(" ");
+		said = create_matcher("\\s+", create_matcher("<[^>]*>", said).replace_all(" ")).replace_all(" ");
 		ad_warn("KoL's reply to the shortcut (" + length(shortcutPage) + " characters, saved to data/autodread_shortcut_fail.html): "
 			+ (length(said) > 600 ? substring(said, 0, 600) + "..." : said));
 		buffer_to_file(shortcutPage.to_buffer(), "autodread_shortcut_fail.html");
@@ -735,6 +730,13 @@ void main(string... args)
 		return;
 	}
 	int turns = words[0] == "" ? -1 : words[0].to_int();
+	// KoL turns everyone below level 15 away ("You must be at least level 15 to handle this spooky place."), and
+	// KoLmafia doesn't recognise that page, so say so here rather than fail at the first adventure.
+	if(my_level() < 15)
+	{
+		ad_warn("Dreadsylvania needs level 15 and you're level " + my_level() + ", so there's nothing to do there yet.");
+		return;
+	}
 	try
 	{
 		ad_overrideProperty("choiceAdventureScript", "");
