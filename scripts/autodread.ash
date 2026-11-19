@@ -453,7 +453,13 @@ boolean ad_visit(ad_place p, ad_plan plan)
 	ad_info(p.name + ": " + plan.what + ".");
 	int turnsBefore = my_turncount();
 	string page = visit_url("clan_dreadsylvania.php?action=forceloc&loc=" + p.shortcut);
-	if(page.contains_text("choice.php") || handling_choice())
+	// The shortcut leads to the place's choice without a turn spent; the turn goes with the option taken. KoLmafia
+	// doesn't always see that choice (run 108: logged with no encounter), so load it from choice.php if need be.
+	if(!handling_choice() && !page.contains_text("choice.php"))
+	{
+		page = visit_url("choice.php");
+	}
+	if(handling_choice() || page.contains_text("whichchoice"))
 	{
 		run_choice(-1);
 	}
