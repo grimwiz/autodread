@@ -460,6 +460,11 @@ boolean ad_visit(ad_place p, ad_plan plan)
 	if(my_turncount() == turnsBefore && !handling_choice())
 	{
 		ad_warn("The shortcut to " + p.name + " didn't take a turn; stopping so it doesn't repeat.");
+		// KoLmafia prints no reason when it doesn't recognise the reply (run 108's ghost pencil), so show what KoL said
+		string said = create_matcher("\\s+", create_matcher("<[^>]*>", page).replace_all(" ")).replace_all(" ");
+		ad_warn("KoL's reply (" + length(page) + " characters, saved to data/autodread_shortcut_fail.html): "
+			+ (length(said) > 600 ? substring(said, 0, 600) + "..." : said));
+		buffer_to_file(page.to_buffer(), "autodread_shortcut_fail.html");
 		return false;
 	}
 	return true;
