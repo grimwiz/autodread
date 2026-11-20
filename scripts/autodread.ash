@@ -15,6 +15,9 @@ since r29000;
 // Usage (KoLmafia command line):
 //   autodread          spend all adventures (or until there's nothing useful left)
 //   autodread N        spend at most N turns
+//   autodread pencil   open the Village and Castle if they're shut, then only the ghost pencil: collect this
+//                      instance's and use it to record a place on your map, then stop (autosea calls this on the
+//                      way to Dad Sea Monkee)
 //   autodread status   show the instance, your noncombats and your map, without adventuring
 
 // ---------------------------------------------------------------- logging and settings
@@ -680,6 +683,81 @@ boolean ad_turn()
 	return ad_fight(best);
 }
 
+// What "autodread pencil" still has to do in this instance: a pencil in hand with an unrecorded place in a zone we may
+// fight in, or this instance's pencil to collect.
+boolean ad_pencilWorkLeft()
+{
+	int sheets = ad_carriageSheets();
+	if(ad_pencils() > 0)
+	{
+		foreach i, p in ad_places()
+		{
+			if(!ad_recorded(p) && ad_zoneReachable(p.zone, sheets) && ad_mayFight(p.zone))
+			{
+				return true;
+			}
+		}
+	}
+	return ad_pencilWanted() && ad_zoneReachable("Village", sheets);
+}
+
+// The ghost pencil and the zones, then stop: the turns are wanted elsewhere (user, 2026-11-20: grimwiz levels in the
+// sea to 15, does this, and goes back to the sea for Dad Sea Monkee).
+void ad_runPencil()
+{
+	if(!ad_readLog())
+	{
+		ad_warn("Your clan has no Dreadsylvania instance open.");
+		return;
+	}
+	int sheets = ad_carriageSheets();
+	foreach zone in $strings[Village, Castle]
+	{
+		if(!ad_zoneReachable(zone, sheets))
+		{
+			ad_carriage(sheets, zone);
+			sheets = ad_carriageSheets();
+		}
+	}
+	int start = my_turncount();
+	int reserve = ad_setting("advReserve", "0").to_int();
+	int stuck = 0;
+	while(true)
+	{
+		if(!ad_readLog())
+		{
+			ad_warn("Your clan has no Dreadsylvania instance open.");
+			break;
+		}
+		if(!ad_pencilWorkLeft())
+		{
+			ad_info(ad_anyUnrecorded() ? "Nothing more for the ghost pencil in this instance." : "Every place is on your map.");
+			break;
+		}
+		if(my_adventures() <= reserve)
+		{
+			cli_execute("autosea diet");
+		}
+		if(my_adventures() <= reserve)
+		{
+			ad_info("Out of adventures (reserve " + reserve + "), and nothing more worth eating or drinking.");
+			break;
+		}
+		int before = my_turncount();
+		if(!ad_turn())
+		{
+			break;
+		}
+		stuck = my_turncount() == before ? stuck + 1 : 0;
+		if(stuck >= 3)
+		{
+			ad_warn("Three steps in a row spent no turn. Stopping so it doesn't spin.");
+			break;
+		}
+	}
+	ad_info("Spent " + (my_turncount() - start) + " turns on the pencil.");
+}
+
 void ad_run(int maxTurns)
 {
 	int start = my_turncount();
@@ -724,12 +802,12 @@ void main(string... args)
 		ad_status();
 		return;
 	}
-	if(words[0] != "" && words[0].to_int() <= 0)
+	if(words[0] != "" && words[0] != "pencil" && words[0].to_int() <= 0)
 	{
-		ad_warn("Usage: autodread [turns] | autodread status");
+		ad_warn("Usage: autodread [turns] | autodread pencil | autodread status");
 		return;
 	}
-	int turns = words[0] == "" ? -1 : words[0].to_int();
+	int turns = words[0] == "" || words[0] == "pencil" ? -1 : words[0].to_int();
 	// KoL turns everyone below level 15 away ("You must be at least level 15 to handle this spooky place."), and
 	// KoLmafia doesn't recognise that page, so say so here rather than fail at the first adventure.
 	if(my_level() < 15)
@@ -740,7 +818,14 @@ void main(string... args)
 	try
 	{
 		ad_overrideProperty("choiceAdventureScript", "");
-		ad_run(turns);
+		if(words[0] == "pencil")
+		{
+			ad_runPencil();
+		}
+		else
+		{
+			ad_run(turns);
+		}
 	}
 	finally
 	{
