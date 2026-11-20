@@ -707,7 +707,7 @@ boolean ad_pencilWorkLeft(boolean recordPlace)
 
 // The ghost pencil and the zones, then stop: the turns are wanted elsewhere (user, 2026-11-20: grimwiz levels in the
 // sea to 15, does this, and goes back to the sea for Dad Sea Monkee).
-void ad_runPencil(boolean recordPlace)
+void ad_runPencil(boolean recordPlace, int maxTurns)
 {
 	if(!ad_readLog())
 	{
@@ -728,6 +728,11 @@ void ad_runPencil(boolean recordPlace)
 	int stuck = 0;
 	while(true)
 	{
+		if(maxTurns >= 0 && my_turncount() - start >= maxTurns)
+		{
+			ad_info("Reached the " + maxTurns + "-turn limit.");
+			break;
+		}
 		if(!ad_readLog())
 		{
 			ad_warn("Your clan has no Dreadsylvania instance open.");
@@ -810,7 +815,7 @@ void main(string... args)
 	}
 	if(words[0] != "" && words[0] != "pencil" && words[0] != "map" && words[0].to_int() <= 0)
 	{
-		ad_warn("Usage: autodread [turns] | autodread pencil | autodread map | autodread status");
+		ad_warn("Usage: autodread [turns] | autodread pencil [turns] | autodread map [turns] | autodread status");
 		return;
 	}
 	int turns = words[0] == "" || words[0] == "pencil" || words[0] == "map" ? -1 : words[0].to_int();
@@ -826,7 +831,8 @@ void main(string... args)
 		ad_overrideProperty("choiceAdventureScript", "");
 		if(words[0] == "pencil" || words[0] == "map")
 		{
-			ad_runPencil(words[0] == "map");
+			int limit = count(words) > 1 && words[1].to_int() > 0 ? words[1].to_int() : -1;
+			ad_runPencil(words[0] == "map", limit);
 		}
 		else
 		{
