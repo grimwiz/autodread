@@ -18,6 +18,8 @@ since r29000;
 //   autodread pencil   open the Village and Castle if they're shut, collect this instance's ghost pencil, then stop
 //                      (autosea calls this on the way to Dad Sea Monkee). The pencil is used by a later run, when it
 //                      meets a place that isn't on your map.
+//   autodread map      the same, then record a place on your map with the pencil: fights where one can turn up
+//                      until it does (that can take a hundred turns or more), then stop
 //   autodread status   show the instance, your noncombats and your map, without adventuring
 
 // ---------------------------------------------------------------- logging and settings
@@ -683,17 +685,29 @@ boolean ad_turn()
 	return ad_fight(best);
 }
 
-// What "autodread pencil" still has to do in this instance: collect this instance's pencil. Recording a place with it
-// waits for that place's noncombat, which can take a hundred fights or more (grimwiz, 2026-11-20: 108 in the Woods
-// without the Tallest Tree), so the pencil is kept for when a normal run meets one.
-boolean ad_pencilWorkLeft()
+// What "autodread pencil" still has to do in this instance: collect this instance's pencil. "autodread map" also
+// records a place with it (user, 2026-11-20): with a pencil in hand, fight where a place that isn't on the map, and that
+// we haven't used this instance, can turn up. That waits on the place's noncombat, which can take a hundred fights or
+// more (grimwiz, 2026-11-20: 108 in the Woods without the Tallest Tree), so plain "pencil" keeps the pencil for later.
+boolean ad_pencilWorkLeft(boolean recordPlace)
 {
-	return ad_pencilWanted() && ad_zoneReachable("Village", ad_carriageSheets());
+	int sheets = ad_carriageSheets();
+	if(recordPlace && ad_pencils() > 0)
+	{
+		foreach i, p in ad_places()
+		{
+			if(!ad_recorded(p) && !ad_placeUsed(p) && ad_zoneReachable(p.zone, sheets) && ad_mayFight(p.zone))
+			{
+				return true;
+			}
+		}
+	}
+	return ad_pencilWanted() && ad_zoneReachable("Village", sheets);
 }
 
 // The ghost pencil and the zones, then stop: the turns are wanted elsewhere (user, 2026-11-20: grimwiz levels in the
 // sea to 15, does this, and goes back to the sea for Dad Sea Monkee).
-void ad_runPencil()
+void ad_runPencil(boolean recordPlace)
 {
 	if(!ad_readLog())
 	{
@@ -719,9 +733,10 @@ void ad_runPencil()
 			ad_warn("Your clan has no Dreadsylvania instance open.");
 			break;
 		}
-		if(!ad_pencilWorkLeft())
+		if(!ad_pencilWorkLeft(recordPlace))
 		{
-			ad_info(ad_anyUnrecorded() ? "This instance's ghost pencil is collected." : "Every place is on your map.");
+			ad_info(!ad_anyUnrecorded() ? "Every place is on your map."
+				: recordPlace ? "No place left to record in this instance." : "This instance's ghost pencil is collected.");
 			break;
 		}
 		if(my_adventures() <= reserve)
@@ -793,12 +808,12 @@ void main(string... args)
 		ad_status();
 		return;
 	}
-	if(words[0] != "" && words[0] != "pencil" && words[0].to_int() <= 0)
+	if(words[0] != "" && words[0] != "pencil" && words[0] != "map" && words[0].to_int() <= 0)
 	{
-		ad_warn("Usage: autodread [turns] | autodread pencil | autodread status");
+		ad_warn("Usage: autodread [turns] | autodread pencil | autodread map | autodread status");
 		return;
 	}
-	int turns = words[0] == "" || words[0] == "pencil" ? -1 : words[0].to_int();
+	int turns = words[0] == "" || words[0] == "pencil" || words[0] == "map" ? -1 : words[0].to_int();
 	// KoL turns everyone below level 15 away ("You must be at least level 15 to handle this spooky place."), and
 	// KoLmafia doesn't recognise that page, so say so here rather than fail at the first adventure.
 	if(my_level() < 15)
@@ -809,9 +824,9 @@ void main(string... args)
 	try
 	{
 		ad_overrideProperty("choiceAdventureScript", "");
-		if(words[0] == "pencil")
+		if(words[0] == "pencil" || words[0] == "map")
 		{
-			ad_runPencil();
+			ad_runPencil(words[0] == "map");
 		}
 		else
 		{

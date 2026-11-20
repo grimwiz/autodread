@@ -8,6 +8,7 @@ A KoLmafia script that spends your turns in your clan's Dreadsylvania the way a 
 autodread           spend your adventures (or stop when nothing useful is left)
 autodread 30        the same, spending at most 30 turns
 autodread pencil    open the Village and Castle if shut, collect this instance's ghost pencil, then stop (a later run records a place with it)
+autodread map       the same, then record a place on your map with the pencil (fights until one turns up), then stop
 autodread status    show the instance, your noncombats and your map, without adventuring
 ```
 
