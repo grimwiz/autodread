@@ -15,9 +15,9 @@ since r29000;
 // Usage (KoLmafia command line):
 //   autodread          spend all adventures (or until there's nothing useful left)
 //   autodread N        spend at most N turns
-//   autodread pencil   open the Village and Castle if they're shut, then only the ghost pencil: collect this
-//                      instance's and use it to record a place on your map, then stop (autosea calls this on the
-//                      way to Dad Sea Monkee)
+//   autodread pencil   open the Village and Castle if they're shut, collect this instance's ghost pencil, then stop
+//                      (autosea calls this on the way to Dad Sea Monkee). The pencil is used by a later run, when it
+//                      meets a place that isn't on your map.
 //   autodread status   show the instance, your noncombats and your map, without adventuring
 
 // ---------------------------------------------------------------- logging and settings
@@ -628,7 +628,7 @@ boolean ad_turn()
 	{
 		foreach i, p in ad_places()
 		{
-			if(!ad_recorded(p) && ad_zoneReachable(p.zone, sheets) && ad_mayFight(p.zone))
+			if(!ad_recorded(p) && !ad_placeUsed(p) && ad_zoneReachable(p.zone, sheets) && ad_mayFight(p.zone))
 			{
 				ad_debug("holding a pencil: adventuring in the " + p.zone + " for " + p.name);
 				return ad_fight(p.zone);
@@ -683,22 +683,12 @@ boolean ad_turn()
 	return ad_fight(best);
 }
 
-// What "autodread pencil" still has to do in this instance: a pencil in hand with an unrecorded place in a zone we may
-// fight in, or this instance's pencil to collect.
+// What "autodread pencil" still has to do in this instance: collect this instance's pencil. Recording a place with it
+// waits for that place's noncombat, which can take a hundred fights or more (grimwiz, 2026-11-20: 108 in the Woods
+// without the Tallest Tree), so the pencil is kept for when a normal run meets one.
 boolean ad_pencilWorkLeft()
 {
-	int sheets = ad_carriageSheets();
-	if(ad_pencils() > 0)
-	{
-		foreach i, p in ad_places()
-		{
-			if(!ad_recorded(p) && ad_zoneReachable(p.zone, sheets) && ad_mayFight(p.zone))
-			{
-				return true;
-			}
-		}
-	}
-	return ad_pencilWanted() && ad_zoneReachable("Village", sheets);
+	return ad_pencilWanted() && ad_zoneReachable("Village", ad_carriageSheets());
 }
 
 // The ghost pencil and the zones, then stop: the turns are wanted elsewhere (user, 2026-11-20: grimwiz levels in the
@@ -731,7 +721,7 @@ void ad_runPencil()
 		}
 		if(!ad_pencilWorkLeft())
 		{
-			ad_info(ad_anyUnrecorded() ? "Nothing more for the ghost pencil in this instance." : "Every place is on your map.");
+			ad_info(ad_anyUnrecorded() ? "This instance's ghost pencil is collected." : "Every place is on your map.");
 			break;
 		}
 		if(my_adventures() <= reserve)
@@ -755,7 +745,8 @@ void ad_runPencil()
 			break;
 		}
 	}
-	ad_info("Spent " + (my_turncount() - start) + " turns on the pencil.");
+	ad_info("Spent " + (my_turncount() - start) + " turns on the pencil" + (ad_pencils() > 0 ? "; holding " + ad_pencils()
+		+ " for the next place that isn't on your map." : "."));
 }
 
 void ad_run(int maxTurns)
